@@ -31,23 +31,26 @@ def exponential_moving_average(values, alpha):
     Compute an exponential moving average of the values list.
     The alpha parameter controls the smoothing factor.
     """
-    ema_values = []
-    ema = 0
-    for value in values:
-        if not ema_values:  # if ema_values list is empty
-            ema = value
-        else:
-            ema = alpha * value + (1 - alpha) * ema
-        ema_values.append(ema)
-    return ema_values[-1] if ema_values else 0
+    ema = values[0]
+    for value in values[1:]:
+        ema = alpha * value + (1 - alpha) * ema
+    return ema
 
 
 def get_monitor_area():
     screen = screeninfo.get_monitors()[0]
     width, height = screen.width, screen.height
-    top_offset = 30 * height // 100
-    left_offset = 25 * width // 100
-    return {'top': top_offset, 'left': left_offset, 'width': width // 2, 'height': height // 2}
+
+    # Define the percentage of the screen to capture from the top-left corner
+    capture_width_percent = 50  # captures 50% of the screen's width
+    capture_height_percent = 50  # captures 50% of the screen's height
+
+    # Calculate the actual pixel dimensions based on the percentages
+    capture_width = int(width * capture_width_percent / 100)
+    capture_height = int(height * capture_height_percent / 100)
+
+    # The top and left offsets remain 0 to start from the top-left corner
+    return {'top': 0, 'left': 0, 'width': capture_width, 'height': capture_height}
 
 
 def orb_detection_and_compute(img1, img2):
@@ -66,18 +69,20 @@ def smooth_movement(values, window_size):
 
 def control_recoil():
     # You may change these values
-    recoil_compensation_factor = 1.5  # Adjust as needed for downward compensation
+    recoil_compensation_factor = 2  # Adjust as needed for downward compensation
     horizontal_movement_scale = 0.3  # Scale down horizontal movement
-    quick_start_compensation = 20  # Immediate compensation for the first few bullets
-    ema_alpha = 0.2
+    quick_start_compensation = 8  # Immediate compensation for the first few bullets
+    ema_alpha = 0.3
     shots_fired = 0
-    dynamic_factor = 2  # Start with a strong compensation and decrease it
+    dynamic_factor = 3  # Start with a strong compensation and decrease it
     max_y_movement = 100  # Maximum limit for Y-axis movement
     exit_key = 'o'
     game_key = 'x'
+    debug_key = 'f5'
     smoothing_window = 10
 
     # Do not change
+    debug_mode = False
     bbox = get_monitor_area()
     running = True
     movements_x = []
@@ -87,7 +92,6 @@ def control_recoil():
     with mss() as sct:
         old_img = np.array(sct.grab(bbox))
         old_img = cv2.cvtColor(old_img, cv2.COLOR_BGR2GRAY)
-        print("hi")
 
         while running:
             if keyboard.is_pressed(exit_key):
@@ -99,10 +103,19 @@ def control_recoil():
                 print("Game state: ", game_state)
                 time.sleep(0.3)
 
+            if keyboard.is_pressed(debug_key):
+                debug_mode = not debug_mode
+                print("Debug mode: ", debug_mode)
+                time.sleep(0.3)
+
             if win32api.GetAsyncKeyState(0x01) != 0 and game_state:  # Left mouse button pressed
                 new_img = np.array(sct.grab(bbox))
                 new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
-                matches, kp1, kp2 = orb_detection_and_compute(old_img, new_img)
+                try:
+                    matches, kp1, kp2 = orb_detection_and_compute(old_img, new_img)
+                except Exception as err:
+                    print(err)
+                    continue
 
                 xm, ym = 0, 0
                 for match in matches[:20]:
@@ -116,6 +129,11 @@ def control_recoil():
                 movements_y.append(-ym)  # Inverting Y-axis movement
 
                 if len(movements_x) > smoothing_window:
+                    movements_x = movements_x[-smoothing_window:]
+                    movements_y = movements_y[-smoothing_window:]
+
+                # Then calculate the filtered values
+                if len(movements_x) > 1:
                     filtered_x = exponential_moving_average(movements_x, ema_alpha)
                     filtered_y = exponential_moving_average(movements_y, ema_alpha)
                 else:
@@ -128,6 +146,9 @@ def control_recoil():
                     smooth_y = min(filtered_y * recoil_compensation_factor * dynamic_factor, max_y_movement)
 
                 smooth_x = filtered_x * horizontal_movement_scale
+                if debug_mode:
+                    print("Smooth X: ", smooth_x, "Y: ", smooth_y)
+                    print("Movements\nX:", movements_x, "Y: ", movements_y)
 
                 # Adjust the dynamic factor decrement rate based on the weapon's fire rate and recoil pattern
                 dynamic_factor = max(dynamic_factor - 0.05, 1.0)  # Slow down the decrement rate
@@ -137,8 +158,10 @@ def control_recoil():
                 if matches[0].distance > 12:
                     old_img = new_img
 
-                win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(smooth_x), int(-smooth_y), 0, 0)
-                time.sleep(0.1)
+                win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, 0, int(-smooth_y), 0, 0)
+
+            # Do not remove, this is a sleep for the main loop
+            time.sleep(0.01)
 
 
 if __name__ == "__main__":
