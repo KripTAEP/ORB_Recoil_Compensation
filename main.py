@@ -13,7 +13,6 @@ Functions and its description:
 - control_recoil(): - Main function to control recoil.
 """
 
-
 import cv2
 import time
 import numpy as np
@@ -69,19 +68,19 @@ def smooth_movement(values, window_size):
 
 def control_recoil():
     # You may change these values
-    recoil_compensation_factor = 2  # Adjust as needed for downward compensation
+    recoil_compensation_factor = 2 # Adjust as needed for downward compensation
     horizontal_movement_scale = 0.3  # Scale down horizontal movement
     quick_start_compensation = 8  # Immediate compensation for the first few bullets
-    ema_alpha = 0.3
-    shots_fired = 0
+    ema_alpha = 0.3  # 0.1 - 0.9, higher value = more smoothing
     dynamic_factor = 3  # Start with a strong compensation and decrease it
     max_y_movement = 100  # Maximum limit for Y-axis movement
-    exit_key = 'o'
-    game_key = 'x'
-    debug_key = 'f5'
     smoothing_window = 10
+    exit_key = "o"  # Press this key to exit the script
+    game_key = 'x'  # Press this key to start/pause the script
+    debug_key = 'f5'  # Press this key to enable/disable debug mode
 
     # Do not change
+    shots_fired = 0
     debug_mode = False
     bbox = get_monitor_area()
     running = True
