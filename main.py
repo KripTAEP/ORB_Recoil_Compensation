@@ -157,7 +157,7 @@ def control_recoil():
                 if matches[0].distance > 12:
                     old_img = new_img
 
-                win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, 0, int(-smooth_y), 0, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(smooth_x), int(-smooth_y), 0, 0)
 
             # Do not remove, this is a sleep for the main loop
             time.sleep(0.01)
