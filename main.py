@@ -68,38 +68,37 @@ def smooth_movement(values, window_size):
 
 def control_recoil():
     # You may change these values
-    recoil_compensation_factor = 2 # Adjust as needed for downward compensation
+    recoil_compensation_factor = 2  # Adjust as needed for downward compensation
     horizontal_movement_scale = 0.3  # Scale down horizontal movement
     quick_start_compensation = 8  # Immediate compensation for the first few bullets
-    ema_alpha = 0.3  # 0.1 - 0.9, higher value = more smoothing
+    ema_alpha = 0.7  # 0.1 - 0.9, higher value = more smoothing
     dynamic_factor = 3  # Start with a strong compensation and decrease it
-    max_y_movement = 100  # Maximum limit for Y-axis movement
-    smoothing_window = 10
+    max_y_movement = 50  # Maximum limit for Y-axis movement
+    smoothing_window = 30
     exit_key = "o"  # Press this key to exit the script
-    game_key = 'x'  # Press this key to start/pause the script
+    toggle_key = 'x'  # Press this key to start/pause the script
     debug_key = 'f5'  # Press this key to enable/disable debug mode
 
     # Do not change
     shots_fired = 0
     debug_mode = False
     bbox = get_monitor_area()
-    running = True
     movements_x = []
     movements_y = []
-    game_state = 0
+    running = 0
 
     with mss() as sct:
         old_img = np.array(sct.grab(bbox))
         old_img = cv2.cvtColor(old_img, cv2.COLOR_BGR2GRAY)
 
-        while running:
+        while True:
             if keyboard.is_pressed(exit_key):
                 print("Exiting...")
                 break
 
-            if keyboard.is_pressed(game_key):
-                game_state = not game_state
-                print("Game state: ", game_state)
+            if keyboard.is_pressed(toggle_key):
+                running = not running
+                print("Recoil Compensation: ", 'On' if running else 'Off')
                 time.sleep(0.3)
 
             if keyboard.is_pressed(debug_key):
@@ -108,6 +107,12 @@ def control_recoil():
                 time.sleep(0.3)
 
             if win32api.GetAsyncKeyState(0x01) != 0 and game_state:  # Left mouse button pressed
+
+                if keyboard.is_pressed(toggle_key):
+                    running = not running
+                    print("Recoil Compensation: ", 'On' if running else 'Off')
+                    time.sleep(0.3)
+
                 new_img = np.array(sct.grab(bbox))
                 new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
                 try:
@@ -154,13 +159,15 @@ def control_recoil():
 
                 shots_fired += 1  # Increment shots fired
 
-                if matches[0].distance > 12:
+                if matches[0].distance > 10:
                     old_img = new_img
+                    if debug_mode:
+                        print("Distance: ", matches[0].distance)
 
                 win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(smooth_x), int(-smooth_y), 0, 0)
 
             # Do not remove, this is a sleep for the main loop
-            time.sleep(0.01)
+            time.sleep(0.002)
 
 
 if __name__ == "__main__":
