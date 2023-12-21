@@ -106,7 +106,7 @@ def control_recoil():
                 print("Debug mode: ", debug_mode)
                 time.sleep(0.3)
 
-            if win32api.GetAsyncKeyState(0x01) != 0 and game_state:  # Left mouse button pressed
+            if win32api.GetAsyncKeyState(0x01) != 0 and running:  # Left mouse button pressed
 
                 if keyboard.is_pressed(toggle_key):
                     running = not running
