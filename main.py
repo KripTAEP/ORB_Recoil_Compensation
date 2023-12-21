@@ -71,10 +71,10 @@ def control_recoil():
     recoil_compensation_factor = 2  # Adjust as needed for downward compensation
     horizontal_movement_scale = 0.3  # Scale down horizontal movement
     quick_start_compensation = 8  # Immediate compensation for the first few bullets
-    ema_alpha = 0.7  # 0.1 - 0.9, higher value = more smoothing
+    ema_alpha = 0.9  # 0.1 - 0.9, higher value = more smoothing
     dynamic_factor = 3  # Start with a strong compensation and decrease it
     max_y_movement = 50  # Maximum limit for Y-axis movement
-    smoothing_window = 30
+    smoothing_window = 10
     exit_key = "o"  # Press this key to exit the script
     toggle_key = 'x'  # Press this key to start/pause the script
     debug_key = 'f5'  # Press this key to enable/disable debug mode
@@ -86,6 +86,14 @@ def control_recoil():
     movements_x = []
     movements_y = []
     running = 0
+
+    print(
+        f"""
+        Starting Recoil Control\n
+        - Press: {toggle_key} to start/pause the script
+        - Press: {exit_key} to exit the script
+        - Press: {debug_key} to enable/disable debug mode
+        """)
 
     with mss() as sct:
         old_img = np.array(sct.grab(bbox))
@@ -106,7 +114,7 @@ def control_recoil():
                 print("Debug mode: ", debug_mode)
                 time.sleep(0.3)
 
-            if win32api.GetAsyncKeyState(0x01) != 0 and game_state:  # Left mouse button pressed
+            if win32api.GetAsyncKeyState(0x01) != 0 and running:  # Left mouse button pressed
 
                 if keyboard.is_pressed(toggle_key):
                     running = not running
@@ -115,6 +123,9 @@ def control_recoil():
 
                 new_img = np.array(sct.grab(bbox))
                 new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
+
+                # Apply Canny Edge Detector to enhance edges
+                #edges = cv2.Canny(new_img, threshold1=100, threshold2=200)
                 try:
                     matches, kp1, kp2 = orb_detection_and_compute(old_img, new_img)
                 except Exception as err:
@@ -145,7 +156,7 @@ def control_recoil():
 
                 if shots_fired < 5:
                     smooth_y = -quick_start_compensation
-                    dynamic_factor = 2.0  # Reset the dynamic factor after quick start
+                    #dynamic_factor = 2.0  # Reset the dynamic factor after quick start
                 else:
                     smooth_y = min(filtered_y * recoil_compensation_factor * dynamic_factor, max_y_movement)
 
